@@ -375,10 +375,12 @@ class ManagedRoom
 
 	void greetNewUsers()
 	{
-		room.sendMessage(newUsers.join(
-				", ")
-				~ ": Welcome! This room's Game Host is automatically managed by a bot. To find out more, type !info");
-		newUsers.length = 0;
+		if (newUsers.length)
+		{
+			room.sendMessage(newUsers.join(", ")
+					~ ": Welcome! This room's Game Host is automatically managed by a bot. To find out more, type !info");
+			newUsers.length = 0;
+		}
 	}
 
 	int requiredSkipUsers()
