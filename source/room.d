@@ -306,6 +306,7 @@ class ManagedRoom
 	State selectState;
 	State waitingState;
 	State ingameState;
+	State emptyState;
 
 	State currentState;
 	StateTimer stateTimer;
@@ -339,6 +340,7 @@ class ManagedRoom
 		selectState = new SelectMapState(this);
 		waitingState = new WaitingState(this);
 		ingameState = new IngameState(this);
+		emptyState = new EmptyState(this);
 
 		currentState = selectState;
 		currentState.enter();
@@ -452,6 +454,7 @@ class ManagedRoom
 			// everyone left
 			//room.close();
 			failedHostPassing.length = 0;
+			switchState(emptyState);
 			return null;
 		}
 		else
@@ -773,6 +776,7 @@ class ManagedRoom
 
 	void onUserJoin(string user, ubyte slot)
 	{
+		currentState.onUserJoin(user, slot);
 		if (hostOrder.canFind(user))
 			return;
 		if (hostOrder.length)
@@ -855,6 +859,10 @@ abstract class State
 	}
 
 	void onMatchStart()
+	{
+	}
+
+	void onUserJoin(string user, ubyte slot)
 	{
 	}
 }
@@ -1002,5 +1010,27 @@ class IngameState : State
 	override void leave()
 	{
 
+	}
+}
+
+class EmptyState : State
+{
+	ManagedRoom room;
+	this(ManagedRoom room)
+	{
+		this.room = room;
+	}
+
+	override void enter()
+	{
+	}
+
+	override void leave()
+	{
+	}
+
+	override void onUserJoin(string user, ubyte slot)
+	{
+		room.switchState(room.waitingState);
 	}
 }
