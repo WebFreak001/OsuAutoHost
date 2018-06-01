@@ -492,6 +492,8 @@ class ManagedRoom
 
 	string currentHost() @property
 	{
+		if (currentHostIndex >= hostOrder.length)
+			return null;
 		return hostOrder[currentHostIndex];
 	}
 
