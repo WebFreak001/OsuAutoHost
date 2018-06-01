@@ -412,7 +412,7 @@ class ManagedRoom
 			playHistory ~= info;
 	}
 
-	void checkMap()
+	MapInfo checkMap()
 	{
 		try
 		{
@@ -430,12 +430,14 @@ class ManagedRoom
 			}
 			else
 				requiredSkips = 1;
+			return map;
 		}
 		catch (Exception e)
 		{
 			room.sendMessage("Error: Map could not be looked up. " ~ e.msg);
 			requiredSkips = 0.8;
 			currentMapDuration = 5.minutes;
+			return MapInfo.init;
 		}
 	}
 
@@ -885,21 +887,23 @@ class SelectMapState : State
 	{
 		room.currentMapInfo = beatmap;
 		room.abortStateTimer();
+		auto info = room.checkMap();
+		string title = info.artist ~ " - " ~ info.title;
 		if (room.wasRecentlyPlayed(beatmap))
 		{
 			room.room.sendMessage(
-					room.currentHost ~ ": Please pick another map! This map was recently played.");
+					room.currentHost ~ ": Please pick another map! " ~ title ~ " was recently played.");
 			startIdleTimer();
 		}
 		else if (room.skippedMapIDs.canFind(beatmap.id))
 		{
-			room.room.sendMessage(room.currentHost ~ ": Please pick another map! This map was skipped.");
+			room.room.sendMessage(
+					room.currentHost ~ ": Please pick another map! " ~ title ~ " was skipped.");
 			startIdleTimer();
 		}
 		else
 		{
 			room.switchState(room.waitingState);
-			room.checkMap();
 		}
 	}
 
