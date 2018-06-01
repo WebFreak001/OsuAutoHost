@@ -790,6 +790,7 @@ class ManagedRoom
 		{
 			hostOrder = [user]; // first join!
 			nextHost();
+			switchState(waitingState);
 		}
 
 		try
