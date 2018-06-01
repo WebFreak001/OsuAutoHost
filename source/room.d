@@ -603,7 +603,7 @@ class ManagedRoom
 			{
 				auto user = GameUser.findByUsername(msg.sender);
 				room.sendMessage(
-						msg.sender ~ ": You left as host " ~ user.hostLeaves.length.to!string ~ " times and got penaltized for it "
+						msg.sender ~ ": You left as host " ~ user.hostLeaves.length.to!string ~ " times and got penalized for it "
 						~ user.numHostLeavePenalties.to!string
 						~ " times. You have joined auto host " ~ user.joins.to!string ~ " times.");
 				room.sendMessage(
