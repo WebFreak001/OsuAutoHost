@@ -488,7 +488,9 @@ class ManagedRoom
 				}
 				room.host = user;
 				actualCurrentHost = currentHostIndex;
-				if (hostOrder.length <= 2)
+				if (hostOrder.length == 0)
+					room.sendMessage("No next hosts.");
+				else if (hostOrder.length <= 2)
 					room.sendMessage("Next host is " ~ hostOrder.cycle.drop(currentHostIndex + 1).front);
 				else if (hostOrder.length > 2)
 					room.sendMessage("Next hosts are " ~ hostOrder.cycle.drop(currentHostIndex + 1)
@@ -627,9 +629,11 @@ class ManagedRoom
 				suffix = ". " ~ msg.sender ~ ": you are host after at most "
 					~ waits.to!string ~ "other users. :)";
 			}
-			if (hostOrder.length == 1)
+			if (hostOrder.length == 0)
+				room.sendMessage("No next hosts." ~ suffix);
+			else if (hostOrder.length <= 2)
 				room.sendMessage("Next host is " ~ hostOrder.cycle.drop(currentHostIndex + 1).front ~ suffix);
-			else if (hostOrder.length > 1)
+			else if (hostOrder.length > 2)
 				room.sendMessage("Next hosts are " ~ hostOrder.cycle.drop(currentHostIndex + 1)
 						.take(min(5, hostOrder.length - 1)).join(", ") ~ suffix);
 		}
@@ -678,6 +682,11 @@ class ManagedRoom
 			else
 				room.sendMessage("Map skip progress: " ~ .text(skippers.length, "/", requiredSkipUsers));
 		}
+		else if (text == "!r" || text == "!start")
+		{
+			room.sendMessage(
+					msg.sender ~ ": This room doesn't require any special commands, just play as usual. See !info");
+		}
 	}
 
 	void onCountdownFinished()
@@ -721,6 +730,12 @@ class ManagedRoom
 				room.sendMessage(
 						user ~ ": tried to be a smartass and started anyway. Aborting and skipping host.");
 			}
+		}
+		else if (!room.slots.length)
+		{
+			room.abortMatch();
+			room.sendMessage("Currently having no users. Aborting match");
+			nextHost();
 		}
 		else
 		{
