@@ -589,7 +589,7 @@ class ManagedRoom
 				return;
 			lastInfo = getNow();
 			room.sendMessage("Don't mind me, just here to prevent AFK people and auto host, keeping lobbying as vanilla as possible. Source Code: https://github.com/WebFreak001/OsuAutoHost");
-			room.sendMessage("Commands: !voteskip (if map doesn't fit criteria), !hostqueue, !me");
+			room.sendMessage("Commands: !skip (if map doesn't fit criteria), !hostqueue, !me");
 			room.sendMessage("Settings: " ~ settings.toString);
 		}
 		else if (text == "!me")
