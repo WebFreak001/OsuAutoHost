@@ -475,6 +475,9 @@ class ManagedRoom
 			// everyone left
 			//room.close();
 			failedHostPassing.length = 0;
+			playHistory.length = 0;
+			skippedMapIDs.length = 0;
+			skippers.length = 0;
 			switchState(emptyState);
 			return null;
 		}
