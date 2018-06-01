@@ -4,5 +4,6 @@
 		"bancho-irc": "~>0.5.0",
 		"mongoschemad": "~>2.5.3"
 	},
-	"name": "osu-auto-host"
+	"name": "osu-auto-host",
+	"license": "MIT"
 }
