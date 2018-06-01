@@ -155,40 +155,61 @@ struct AutoHostSettings
 	double evaluateMapSkip(ref MapInfo map, out string[] errors)
 	{
 		int penalties;
-		if (!matchesMode(map.mode))
+		int total;
+		if (preferredMode != ModeFlags.all)
 		{
-			penalties += 8;
-			errors ~= text("Please pick a ", stringifyBitflags(preferredMode), " map.");
-		}
-		if (!inStarRange(map.difficultyRating))
-		{
-			if (maxStars && map.difficultyRating - 1 > maxStars)
+			total += 8;
+			if (!matchesMode(map.mode))
 			{
-				penalties += 6;
-				errors ~= "Map difficulty out of preferred star range.";
+				penalties += 8;
+				errors ~= text("Please pick a ", stringifyBitflags(preferredMode), " map.");
 			}
-			else
+		}
+		if (minStars || maxStars)
+		{
+			total += 6;
+			if (!inStarRange(map.difficultyRating))
+			{
+				if (minStars && map.difficultyRating < minStars)
+				{
+					penalties += 6;
+					errors ~= "Map difficulty out of preferred star range.";
+				}
+				else
+				{
+					penalties += 4;
+					errors ~= "Map difficulty slightly out of preferred star range.";
+				}
+			}
+		}
+		if (preferredApproval != ApprovalFlags.all)
+		{
+			total += 3;
+			if (!matchesApproval(map.approved))
 			{
 				penalties += 3;
-				errors ~= "Map difficulty slightly out of preferred star range.";
+				errors ~= text("This map is not ", stringifyBitflags(preferredApproval), ".");
 			}
 		}
-		if (!matchesApproval(map.approved))
+		if (preferredGenre != GenreFlags.all)
 		{
-			penalties += 3;
-			errors ~= text("This map is not ", stringifyBitflags(preferredApproval), ".");
+			total += 2;
+			if (!matchesGenre(map.genre))
+			{
+				penalties += 2;
+				errors ~= text("Map genre does not match ", stringifyBitflags(preferredGenre), ".");
+			}
 		}
-		if (!matchesGenre(map.genre))
+		if (preferredLanguage != LanguageFlags.all)
 		{
-			penalties += 2;
-			errors ~= text("Map genre does not match ", stringifyBitflags(preferredGenre), ".");
+			total += 2;
+			if (!matchesLanguage(map.language))
+			{
+				penalties += 2;
+				errors ~= text("Map language does not match ", stringifyBitflags(preferredGenre), ".");
+			}
 		}
-		if (!matchesLanguage(map.language))
-		{
-			penalties += 2;
-			errors ~= text("Map language does not match ", stringifyBitflags(preferredGenre), ".");
-		}
-		return penalties / cast(double)(2 + 2 + 3 + 6 + 8);
+		return penalties / cast(double) total;
 	}
 }
 
@@ -685,7 +706,8 @@ class ManagedRoom
 		else if (text == "!r" || text == "!start")
 		{
 			room.sendMessage(
-					msg.sender ~ ": This room doesn't require any special commands, just play as usual. See !info");
+					msg.sender
+					~ ": This room doesn't require any special commands, just play as usual. See !info");
 		}
 	}
 
