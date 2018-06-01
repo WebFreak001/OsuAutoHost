@@ -373,13 +373,20 @@ class ManagedRoom
 			switchState(waitingState);
 	}
 
-	void greetNewUsers()
+	void greetNewUsers() nothrow @trusted
 	{
 		if (newUsers.length)
 		{
-			room.sendMessage(newUsers.join(", ")
-					~ ": Welcome! This room's Game Host is automatically managed by a bot. To find out more, type !info");
-			newUsers.length = 0;
+			try
+			{
+				room.sendMessage(newUsers.join(
+						", ")
+						~ ": Welcome! This room's Game Host is automatically managed by a bot. To find out more, type !info");
+				newUsers.length = 0;
+			}
+			catch (Exception)
+			{
+			}
 		}
 	}
 
@@ -582,6 +589,25 @@ class ManagedRoom
 			room.sendMessage("Commands: !voteskip (if map doesn't fit criteria), !hostqueue");
 			room.sendMessage("Settings: " ~ settings.toString);
 		}
+		else if (text == "!me")
+		{
+			try
+			{
+				auto user = GameUser.findByUsername(msg.sender);
+				room.sendMessage(
+						msg.sender ~ ": You left as host " ~ user.hostLeaves.length.to!string ~ " times and got penaltized for it "
+						~ user.numHostLeavePenalties.to!string
+						~ " times. You have joined auto host " ~ user.joins.to!string ~ " times.");
+				room.sendMessage(
+						msg.sender ~ ": So far " ~ user.picksGotSkipped.to!string ~ " of your map picks got skipped. You have played "
+						~ user.playStarts.to!string ~ " times and finished "
+						~ user.playFinishes.to!string ~ " times out of these.");
+			}
+			catch (Exception)
+			{
+				room.sendMessage(msg.sender ~ ": I don't know anything about you :(");
+			}
+		}
 		else if (text == "!hostqueue")
 		{
 			string suffix;
@@ -692,6 +718,16 @@ class ManagedRoom
 		}
 		else
 		{
+			try
+			{
+				foreach (slot; room.slots)
+					if (slot.name.length)
+						GameUser.findByUsername(slot.name).didStart();
+			}
+			catch (Exception e)
+			{
+				room.sendMessage("Have fun playing :)");
+			}
 			skippedMapIDs.length = 0;
 			startingTime = getNow();
 			probablyPlaying = true;
@@ -702,6 +738,17 @@ class ManagedRoom
 
 	void onMatchEnd()
 	{
+		try
+		{
+			foreach (slot; room.slots)
+				if (slot.name.length)
+					GameUser.findByUsername(slot.name).didFinish();
+		}
+		catch (Exception e)
+		{
+			room.sendMessage("Congrats for making it until the end \\o/");
+		}
+
 		startingGame = false;
 		probablyPlaying = false;
 		currentState.onMatchEnd();

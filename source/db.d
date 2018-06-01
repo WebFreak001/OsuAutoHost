@@ -21,8 +21,22 @@ struct GameUser
 	ulong numHosts;
 	ulong picksGotSkipped;
 	SchemaDate[] startedInvalid;
+	ulong playStarts;
+	ulong playFinishes;
 
 	mixin MongoSchema;
+
+	void didStart()
+	{
+		playStarts++;
+		save();
+	}
+
+	void didFinish()
+	{
+		playFinishes++;
+		save();
+	}
 
 	void gotSkipped()
 	{
