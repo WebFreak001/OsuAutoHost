@@ -451,6 +451,7 @@ class ManagedRoom
 		{
 			// everyone left
 			//room.close();
+			failedHostPassing.length = 0;
 			return null;
 		}
 		else
