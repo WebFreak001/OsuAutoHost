@@ -493,20 +493,20 @@ class ManagedRoom
 			auto user = hostOrder[currentHostIndex];
 			try
 			{
-				if (!GameUser.findByUsername(user).shouldGiveHost)
-				{
-					room.sendMessage(
-							"Not giving host to " ~ user ~ " because they currently have a bad reputation.");
-					return nextHost(true);
-				}
-			}
-			catch (Exception e)
-			{
-				room.sendMessage(user ~ ": Lucky you!");
-			}
-			try
-			{
 				room.playerByName(user);
+				try
+				{
+					if (!GameUser.findByUsername(user).shouldGiveHost)
+					{
+						room.sendMessage(
+								"Not giving host to " ~ user ~ " because they currently have a bad reputation.");
+						return nextHost(true);
+					}
+				}
+				catch (Exception e)
+				{
+					room.sendMessage(user ~ ": Lucky you!");
+				}
 				if (failedHostPassing.length)
 				{
 					room.sendMessage("Tried to give host to " ~ failedHostPassing.join(
