@@ -493,7 +493,11 @@ class ManagedRoom
 			auto user = hostOrder[currentHostIndex];
 			try
 			{
-				room.playerByName(user);
+				if (!room.hasPlayer(user))
+				{
+					failedHostPassing ~= user;
+					return nextHost(true);
+				}
 				try
 				{
 					if (!GameUser.findByUsername(user).shouldGiveHost)
