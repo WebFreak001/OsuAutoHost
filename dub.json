@@ -1,7 +1,7 @@
 {
 	"dependencies": {
 		"vibe-d": "~>0.8.4-rc.1",
-		"bancho-irc": "~>0.5.0",
+		"bancho-irc": "~>0.5.2",
 		"mongoschemad": "~>2.5.3"
 	},
 	"name": "osu-auto-host",
