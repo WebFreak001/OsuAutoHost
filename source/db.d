@@ -74,10 +74,10 @@ struct GameUser
 	bool shouldGiveHost()
 	{
 		auto now = Clock.currTime;
-		if ((hostLeaves.length && (now - hostLeaves[$ - 1].toSysTime()) < 24.hours)
-				|| (startedInvalid.length > 2
-					&& (now - startedInvalid[$ - 2].toSysTime) < 24.hours
-					&& (now - startedInvalid[$ - 1].toSysTime) < 12.hours))
+		if ((hostLeaves.length && (hostLeaves.length < numHostLeavePenalties
+				|| (now - hostLeaves[$ - 1].toSysTime()) < 24.hours)) || (startedInvalid.length > 2
+				&& (now - startedInvalid[$ - 2].toSysTime) < 24.hours
+				&& (now - startedInvalid[$ - 1].toSysTime) < 12.hours))
 		{
 			numHostLeavePenalties++;
 			save();
