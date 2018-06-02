@@ -170,7 +170,8 @@ struct AutoHostSettings
 			total += 6;
 			if (!inStarRange(map.difficultyRating))
 			{
-				if (minStars && map.difficultyRating < minStars)
+				if ((minStars && map.difficultyRating < minStars) || (maxStars
+						&& map.difficultyRating + 1 > maxStars))
 				{
 					penalties += 6;
 					errors ~= "Map difficulty out of preferred star range.";
@@ -468,7 +469,7 @@ class ManagedRoom
 	{
 		skippers.length = 0;
 		switchState(selectState);
-		if (deleteCurrent)
+		if (deleteCurrent && currentHostIndex < hostOrder.length)
 			hostOrder = hostOrder[0 .. currentHostIndex] ~ hostOrder[currentHostIndex + 1 .. $];
 		if (hostOrder.length == 0)
 		{
@@ -650,8 +651,8 @@ class ManagedRoom
 			{
 				auto waits = (cast(long) index - cast(long) currentHostIndex + hostOrder.length) % hostOrder
 					.length;
-				suffix = ". " ~ msg.sender ~ ": you are host after at most "
-					~ waits.to!string ~ "other users. :)";
+				suffix = ". " ~ msg.sender ~ ": you are host after at most " ~ waits.to!string ~ " other user" ~ (waits == 1
+						? ". :)" : "s. :)");
 			}
 			if (hostOrder.length == 0)
 				room.sendMessage("No next hosts." ~ suffix);
