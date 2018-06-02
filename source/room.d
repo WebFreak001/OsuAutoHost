@@ -335,6 +335,7 @@ class ManagedRoom
 
 	SysTime lastInfo;
 	SysTime startingTime;
+	SysTime startingGameTimerFinished;
 	double requiredSkips = 1;
 	string[] skippers;
 	Duration currentMapDuration = 5.minutes;
@@ -374,6 +375,7 @@ class ManagedRoom
 
 		lastInfo = getNow();
 		startingTime = getNow();
+		startingGameTimerFinished = getNow();
 
 		newUserTimer = createTimer(&greetNewUsers);
 
@@ -575,10 +577,13 @@ class ManagedRoom
 
 	void startGame(Duration after)
 	{
+		if (startingGame && getNow() + after > startingGameTimerFinished)
+			return;
 		if (startingGame)
 			abortStateTimer();
 		room.start(after);
 		startingGame = true;
+		startingGameTimerFinished = getNow() + after;
 	}
 
 	void switchState(State state)
