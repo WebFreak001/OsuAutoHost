@@ -9,6 +9,7 @@ void main()
 {
 	auto db = connectMongoDB("mongodb://127.0.0.1").getDatabase("osuautohost");
 	db["gameusers"].register!GameUser;
+	db["rooms"].register!PersistentAutoHostRoom;
 
 	configuration = readFileUTF8("config.json").parseJsonString.deserializeJson!Config;
 	banchoConnection = new BanchoBot(configuration.username,
@@ -25,9 +26,9 @@ void main()
 	sleep(3.seconds);
 	//dfmt off
 	AutoHostSettings settings = {
+		internalID: "testroom1",
 		minStars: 5,
 		password: "test",
-		existingChannel: "#mp_42938271",
 		startInvite: ["WebFreak"],
 		preferredGenre: GenreFlags.anime | GenreFlags.videoGame,
 		preferredMode: ModeFlags.osu,

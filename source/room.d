@@ -11,6 +11,7 @@ import std.range;
 import api.map;
 import vibe.vibe;
 import tinyevent;
+import mongoschema;
 import db;
 
 enum ApprovalFlags
@@ -68,6 +69,8 @@ enum ModeFlags
 
 struct AutoHostSettings
 {
+	/// Internal ID to revive a room after it being closed or bot restarting.
+	string internalID;
 	string titlePrefix;
 	string titleSuffix = "Auto Host Rotate";
 	bool starsInTitle = true;
@@ -75,8 +78,6 @@ struct AutoHostSettings
 	ubyte slots = 8;
 	string password;
 	string[] startInvite;
-	/// Channel if the auto host room should manage an existing channel.
-	string existingChannel;
 	/// Inclusive min/max values for the recommended stars rating of a map. A max of 4 includes 4.99* maps. 0 enforces no limit.
 	int minStars, maxStars;
 	Duration startGameDuration = 3.minutes;
@@ -92,6 +93,8 @@ struct AutoHostSettings
 	ModeFlags preferredMode = ModeFlags.all;
 	/// Osu name of the creator (for !temphost permissions and in !info)
 	string creator;
+	/// Reopen if closed
+	bool autoReopen = true;
 
 	string toString() const
 	{
@@ -215,6 +218,17 @@ struct AutoHostSettings
 	}
 }
 
+struct PersistentAutoHostRoom
+{
+	@mongoUnique string internalID;
+	@mongoUnique string mpID;
+	AutoHostSettings settings;
+	string[] hostOrder;
+	size_t currentHost;
+
+	mixin MongoSchema;
+}
+
 string stringifyBitflags(T)(T flags)
 {
 	if (!flags)
@@ -244,6 +258,11 @@ string stringifyBitflags(T)(T flags)
 }
 
 void createAutoHostRoom(AutoHostSettings settings)
+in
+{
+	assert(settings.internalID);
+}
+do
 {
 	string[] hostOrder;
 	size_t setHost;
@@ -270,46 +289,73 @@ void createAutoHostRoom(AutoHostSettings settings)
 	}
 
 	OsuRoom room;
-	if (settings.existingChannel.length)
+
+	auto existing = PersistentAutoHostRoom.tryFindOne(["internalID" : settings.internalID]);
+
+	BsonObjectID persistID;
+
+	if (existing.isNull)
 	{
-		room = banchoConnection.fromUnmanaged(settings.existingChannel);
+		return createNewAutoHostRoom(settings, expectedTitle);
+	}
+	else
+	{
+		hostOrder = existing.hostOrder;
+		setHost = existing.currentHost;
+		room = banchoConnection.fromUnmanaged(existing.mpID);
 		auto info = room.settings;
 		if (info == OsuRoom.Settings.init)
 		{
-			room.sendMessage(
-					"Could not setup auto host. Do '!mp addref "
-					~ banchoConnection.username ~ "' and then try again.");
-			return;
+			return createNewAutoHostRoom(settings, expectedTitle, existing.bsonID);
 		}
+		string[] existingUsers;
 		foreach (i, player; info.players)
 		{
 			if (player != OsuRoom.Settings.Player.init)
 			{
-				hostOrder ~= player.name;
-				if (player.host)
-					setHost = i;
+				existingUsers ~= player.name;
+				if (!hostOrder.canFind(player.name))
+				{
+					hostOrder ~= player.name;
+				}
 			}
 		}
+		foreach_reverse (i, user; hostOrder)
+		{
+			if (!existingUsers.canFind(user))
+			{
+				hostOrder = hostOrder.remove(i);
+				if (i >= setHost)
+					setHost--;
+			}
+		}
+		existing.settings = settings;
+		existing.save();
+		ManagedRoom managedRoom = new ManagedRoom(room, settings, expectedTitle,
+				hostOrder, setHost, existing.bsonID);
 		room.sendMessage("Assuming control over this room (Previous instance shut down)");
 		room.sendMessage("Host order: " ~ hostOrder.join(", "));
 		if (settings.enforceTitle && expectedTitle.length && info.name.strip != expectedTitle.strip)
 			room.sendMessage("Please rename room name to: " ~ expectedTitle);
 	}
-	else
-	{
-		room = banchoConnection.createRoom(expectedTitle);
-	}
-	if (!settings.existingChannel.length)
-	{
-		foreach (user; settings.startInvite)
-			room.invite(user);
-		runTask({
-			room.password = settings.password;
-			room.size = settings.slots;
-			room.mods = [Mod.FreeMod];
-		});
-	}
-	ManagedRoom managedRoom = new ManagedRoom(room, settings, expectedTitle, hostOrder, setHost);
+}
+
+void createNewAutoHostRoom(AutoHostSettings settings, string expectedTitle,
+		BsonObjectID existingPersist = BsonObjectID.init)
+{
+	PersistentAutoHostRoom persist;
+	if (existingPersist.valid)
+		persist.bsonID = existingPersist;
+	persist.internalID = settings.internalID;
+	auto room = banchoConnection.createRoom(expectedTitle);
+	persist.mpID = "#mp_" ~ room.room;
+	persist.settings = settings;
+	persist.save();
+	room.password = settings.password;
+	foreach (user; settings.startInvite)
+		room.invite(user);
+	runTask({ room.size = settings.slots; room.mods = [Mod.FreeMod]; });
+	ManagedRoom managedRoom = new ManagedRoom(room, settings, expectedTitle, [], 0, persist.bsonID);
 }
 
 auto getNow() @property
@@ -330,6 +376,7 @@ class ManagedRoom
 	State waitingState;
 	State ingameState;
 	State emptyState;
+	State unknownState;
 
 	State currentState;
 	StateTimer stateTimer;
@@ -359,13 +406,20 @@ class ManagedRoom
 	string[] newUsers;
 	Timer newUserTimer;
 
+	BsonObjectID persistID;
+
 	this(OsuRoom room, AutoHostSettings settings, string expectedTitle,
-			string[] hostOrder, size_t currentHostIndex)
+			string[] hostOrder, size_t currentHostIndex, BsonObjectID persistID)
 	{
+		this.persistID = persistID;
+
+		auto existing = PersistentAutoHostRoom.findById(persistID);
+
 		selectState = new SelectMapState(this);
 		waitingState = new WaitingState(this);
 		ingameState = new IngameState(this);
 		emptyState = new EmptyState(this);
+		unknownState = new UnknownState(this);
 
 		currentState = selectState;
 		currentState.enter();
@@ -396,9 +450,12 @@ class ManagedRoom
 		room.onMatchStart ~= &this.onMatchStart;
 		room.onMatchEnd ~= &this.onMatchEnd;
 		room.onMessage ~= &this.onMessage;
+		room.onClosed ~= &this.onClosed;
 
-		if (settings.existingChannel.length)
-			switchState(waitingState);
+		if (hostOrder.length == 0)
+			switchState(emptyState);
+		else
+			switchState(unknownState);
 	}
 
 	void greetNewUsers() nothrow @trusted
@@ -514,6 +571,10 @@ class ManagedRoom
 					logError("Error in nextHost: %s", e);
 					room.sendMessage(user ~ ": Lucky you!");
 				}
+				auto persist = PersistentAutoHostRoom.findById(persistID);
+				persist.hostOrder = hostOrder;
+				persist.currentHost = currentHostIndex;
+				persist.save();
 				if (failedHostPassing.length)
 				{
 					room.sendMessage("Tried to give host to " ~ failedHostPassing.join(
@@ -918,6 +979,28 @@ class ManagedRoom
 		}
 		newUsers = newUsers.remove!(a => a == user);
 	}
+
+	void onClosed()
+	{
+		hostOrder = [];
+		currentHostIndex = 0;
+
+		if (!settings.autoReopen)
+			return;
+
+		room = banchoConnection.createRoom(expectedTitle);
+
+		auto persist = PersistentAutoHostRoom.findById(persistID);
+		persist.mpID = "#mp_" ~ room.room;
+		persist.settings = settings;
+		persist.save();
+		room.password = settings.password;
+		foreach (user; settings.startInvite)
+			room.invite(user);
+		runTask({ room.size = settings.slots; room.mods = [Mod.FreeMod]; });
+		switchState(emptyState);
+		playHistory.length = 0;
+	}
 }
 
 abstract class State
@@ -1048,8 +1131,6 @@ class WaitingState : State
 
 	override void onBeatmapChanged(BeatmapInfo beatmap)
 	{
-		room.room.sendMessage(
-				"Hey this message should never have been sent! peppy ur game is broken plz fix.");
 		room.switchState(room.selectState);
 		room.selectState.onBeatmapChanged(beatmap);
 	}
@@ -1119,5 +1200,34 @@ class EmptyState : State
 	override void onUserJoin(string user, ubyte slot)
 	{
 		room.switchState(room.waitingState);
+	}
+}
+
+class UnknownState : State
+{
+	ManagedRoom room;
+	this(ManagedRoom room)
+	{
+		this.room = room;
+	}
+
+	override void enter()
+	{
+	}
+
+	override void leave()
+	{
+	}
+
+	override void onBeatmapChanged(BeatmapInfo beatmap)
+	{
+		room.switchState(room.selectState);
+		room.selectState.onBeatmapChanged(beatmap);
+	}
+
+	override void onBeatmapPending()
+	{
+		room.switchState(room.selectState);
+		room.selectState.onBeatmapPending();
 	}
 }
