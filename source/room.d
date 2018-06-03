@@ -329,6 +329,8 @@ do
 					setHost--;
 			}
 		}
+		if (setHost == size_t(-1))
+			setHost = 0;
 		existing.settings = settings;
 		existing.save();
 		ManagedRoom managedRoom = new ManagedRoom(room, settings, expectedTitle,
