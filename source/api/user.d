@@ -23,21 +23,21 @@ struct UserInfo
 {
 	string userID;
 	string username;
-	ulong count300, count100, count50;
-	ulong playcount;
-	ulong rankedScore;
-	ulong totalScore;
+	long count300, count100, count50;
+	long playcount;
+	long rankedScore;
+	long totalScore;
 	long ppRank;
 	double level;
 	double ppRaw;
 	double accuracy;
-	uint countRankSS;
-	uint countRankSSH;
-	uint countRankS;
-	uint countRankSH;
-	uint countRankA;
+	int countRankSS;
+	int countRankSSH;
+	int countRankS;
+	int countRankSH;
+	int countRankA;
 	char[2] country;
-	uint ppCountryRank;
+	int ppCountryRank;
 	EventInfo[] events;
 }
 
@@ -56,25 +56,25 @@ UserInfo queryUser(string username, int eventDays = 1, bool byID = false)
 	UserInfo user;
 	user.userID = obj.tryIndex("user_id");
 	user.username = obj.tryIndex("username");
-	user.count300 = obj.tryIndex("count300", "0").to!ulong;
-	user.count100 = obj.tryIndex("count100", "0").to!ulong;
-	user.count50 = obj.tryIndex("count50", "0").to!ulong;
-	user.playcount = obj.tryIndex("playcount", "0").to!ulong;
-	user.rankedScore = obj.tryIndex("ranked_score", "0").to!ulong;
-	user.totalScore = obj.tryIndex("total_score", "0").to!ulong;
-	user.ppRank = obj.tryIndex("pp_rank", "0").to!ulong;
+	user.count300 = obj.tryIndex("count300", "0").to!long;
+	user.count100 = obj.tryIndex("count100", "0").to!long;
+	user.count50 = obj.tryIndex("count50", "0").to!long;
+	user.playcount = obj.tryIndex("playcount", "0").to!long;
+	user.rankedScore = obj.tryIndex("ranked_score", "0").to!long;
+	user.totalScore = obj.tryIndex("total_score", "0").to!long;
+	user.ppRank = obj.tryIndex("pp_rank", "0").to!long;
 	user.level = obj.tryIndex("level", "0").to!double;
 	user.ppRaw = obj.tryIndex("pp_raw", "0").to!double;
 	user.accuracy = obj.tryIndex("accuracy", "0").to!double;
-	user.countRankSS = obj.tryIndex("count_rank_ss", "0").to!uint;
-	user.countRankSSH = obj.tryIndex("count_rank_ssh", "0").to!uint;
-	user.countRankS = obj.tryIndex("count_rank_s", "0").to!uint;
-	user.countRankSH = obj.tryIndex("count_rank_sh", "0").to!uint;
-	user.countRankA = obj.tryIndex("count_rank_a", "0").to!uint;
+	user.countRankSS = obj.tryIndex("count_rank_ss", "0").to!int;
+	user.countRankSSH = obj.tryIndex("count_rank_ssh", "0").to!int;
+	user.countRankS = obj.tryIndex("count_rank_s", "0").to!int;
+	user.countRankSH = obj.tryIndex("count_rank_sh", "0").to!int;
+	user.countRankA = obj.tryIndex("count_rank_a", "0").to!int;
 	string country = obj.tryIndex("country", "??");
 	if (country.length == 2)
 		user.country = country[0 .. 2];
-	user.ppCountryRank = obj.tryIndex("pp_country_rank", "0").to!uint;
+	user.ppCountryRank = obj.tryIndex("pp_country_rank", "0").to!int;
 	if (auto events = "events" in obj)
 	{
 		if (events.type == Json.Type.array)
