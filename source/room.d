@@ -90,6 +90,7 @@ struct AutoHostSettings
 	GenreFlags preferredGenre = GenreFlags.all;
 	LanguageFlags preferredLanguage = LanguageFlags.all;
 	ModeFlags preferredMode = ModeFlags.all;
+	/// Osu name of the creator (for !temphost permissions and in !info)
 	string creator;
 
 	string toString() const
@@ -343,6 +344,7 @@ class ManagedRoom
 	bool probablyPlaying;
 	string[] skippedMapIDs;
 	string expectedTitle;
+	string maintenanceHost;
 
 	BeatmapInfo currentMapInfo;
 	BeatmapInfo[] playHistory;
@@ -722,6 +724,19 @@ class ManagedRoom
 					msg.sender
 					~ ": This room doesn't require any special commands, just play as usual. See !info");
 		}
+		else if (text == "!temphost" && msg.sender == settings.creator)
+		{
+			if (maintenanceHost.length)
+			{
+				maintenanceHost = null;
+				room.host = currentHost;
+			}
+			else
+			{
+				maintenanceHost = msg.sender;
+				room.host = msg.sender;
+			}
+		}
 	}
 
 	void onCountdownFinished()
@@ -816,6 +831,8 @@ class ManagedRoom
 
 	void onUserHost(string user)
 	{
+		if (user == maintenanceHost)
+			return;
 		if (actualCurrentHost == currentHostIndex && user != currentHost)
 		{
 			string s = nextHost();
