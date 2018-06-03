@@ -511,6 +511,7 @@ class ManagedRoom
 				}
 				catch (Exception e)
 				{
+					logError("Error in nextHost: %s", e);
 					room.sendMessage(user ~ ": Lucky you!");
 				}
 				if (failedHostPassing.length)
@@ -530,8 +531,9 @@ class ManagedRoom
 							.take(min(3, hostOrder.length - 1)).join(", "));
 				return user;
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
+				logError("Failed to pass host: %s", e);
 				failedHostPassing ~= user;
 				return nextHost(true);
 			}
@@ -647,8 +649,9 @@ class ManagedRoom
 						~ user.playStarts.to!string ~ " times and finished "
 						~ user.playFinishes.to!string ~ " times out of these.");
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
+				logError("Error in !me by %s: %s", msg.sender, e);
 				room.sendMessage(msg.sender ~ ": I don't know anything about you :(");
 			}
 		}
@@ -689,8 +692,9 @@ class ManagedRoom
 			{
 				GameUser.findByUsername(msg.sender).voteSkip(skippers.length == 0);
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
+				logError("Error in !skip by %s: %s", msg.sender, e);
 				room.sendMessage(msg.sender ~ ": yeah I can understand this decision.");
 			}
 			skippers ~= msg.sender;
@@ -710,8 +714,9 @@ class ManagedRoom
 					GameUser.findByUsername(host).gotSkipped();
 					room.sendMessage(host ~ ": your map got skipped, please pick another map.");
 				}
-				catch (Exception)
+				catch (Exception e)
 				{
+					logError("Error in %s's map getting skipped: %s", msg.sender, e);
 					room.sendMessage(host ~ ": that's a crappy map, please pick another one.");
 				}
 			}
@@ -775,8 +780,9 @@ class ManagedRoom
 				GameUser.findByUsername(user).didInvalidStart();
 				room.sendMessage(user ~ ": tried to start an invalid map, aborting and skipping host.");
 			}
-			catch (Exception)
+			catch (Exception e)
 			{
+				logError("Error in foul onMatchStart by %s: %s", user, e);
 				room.sendMessage(
 						user ~ ": tried to be a smartass and started anyway. Aborting and skipping host.");
 			}
@@ -789,16 +795,22 @@ class ManagedRoom
 		}
 		else
 		{
-			try
+			bool error;
+			foreach (slot; room.slots)
 			{
-				foreach (slot; room.slots)
+				try
+				{
 					if (slot.name.length)
 						GameUser.findByUsername(slot.name).didStart();
+				}
+				catch (Exception e)
+				{
+					error = true;
+					logError("Error onMatchStart: %s", e);
+				}
 			}
-			catch (Exception e)
-			{
+			if (error)
 				room.sendMessage("Have fun playing :)");
-			}
 			skippedMapIDs.length = 0;
 			startingTime = getNow();
 			probablyPlaying = true;
@@ -809,16 +821,22 @@ class ManagedRoom
 
 	void onMatchEnd()
 	{
-		try
+		bool error;
+		foreach (slot; room.slots)
 		{
-			foreach (slot; room.slots)
+			try
+			{
 				if (slot.name.length)
 					GameUser.findByUsername(slot.name).didFinish();
+			}
+			catch (Exception e)
+			{
+				error = true;
+				logError("Error onMatchEnd: %s", e);
+			}
 		}
-		catch (Exception e)
-		{
+		if (error)
 			room.sendMessage("Congrats for making it until the end \\o/");
-		}
 
 		startingGame = false;
 		probablyPlaying = false;
@@ -872,6 +890,7 @@ class ManagedRoom
 		}
 		catch (Exception e)
 		{
+			logError("Error onUserJoin: %s", e);
 			room.sendMessage(user ~ ": I have been awaiting you.");
 		}
 	}
